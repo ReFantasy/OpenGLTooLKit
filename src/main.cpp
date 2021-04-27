@@ -4,7 +4,7 @@
 #include "gl_func_helper.h"
 using namespace std;
 
-int main(void)
+int main(int argc, char *argv[])
 {
 	// glfw: initialize and configure
 	glfwInit();
