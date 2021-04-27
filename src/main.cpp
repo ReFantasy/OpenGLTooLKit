@@ -33,7 +33,7 @@ int main()
 	auto project_path = std::filesystem::current_path().parent_path();
 	Shader shader(std::string(project_path.string()+"/src/vertShader.glsl").c_str(),
 			std::string(project_path.string()+"/src/fragShader.glsl").c_str());
-	shader.use();
+	shader.Use();
 
 	// 模型和数据
 	float vertices[] = {
@@ -75,7 +75,7 @@ int main()
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		shader.use();
+		shader.Use();
 
 		glBindVertexArray(VAO);
 		//glDrawArrays(GL_TRIANGLES, 0, 3);

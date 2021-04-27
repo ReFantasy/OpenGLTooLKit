@@ -7,7 +7,7 @@
 ** Permission is hereby granted, free of charge, to any person obtaining a
 ** copy of this software and/or associated documentation files (the
 ** "Materials"), to deal in the Materials without restriction, including
-** without limitation the rights to use, copy, modify, merge, publish,
+** without limitation the rights to Use, copy, modify, merge, publish,
 ** distribute, sublicense, and/or sell copies of the Materials, and to
 ** permit persons to whom the Materials are furnished to do so, subject to
 ** the following conditions:
@@ -69,7 +69,7 @@
  *    khronos_boolean_enum_t      enumerated boolean type. This should
  *      only be used as a base type when a client API's boolean type is
  *      an enum. Client APIs which use an integer or other type for
- *      booleans cannot use this as the base type for their boolean.
+ *      booleans cannot Use this as the base type for their boolean.
  *
  * Tokens defined in khrplatform.h:
  *
@@ -233,7 +233,7 @@ typedef unsigned short int     khronos_uint16_t;
 /*
  * Types that differ between LLP64 and LP64 architectures - in LLP64,
  * pointers are 64 bits, but 'long' is still 32 bits. Win64 appears
- * to be the only LLP64 architecture in current use.
+ * to be the only LLP64 architecture in current Use.
  */
 #ifdef _WIN64
 typedef signed   long long int khronos_intptr_t;
