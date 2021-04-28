@@ -26,8 +26,6 @@ int main()
 	// glad: load all OpenGL function pointers
 	if (!GladInit()) return -1;
 
-	GLInfo();
-	
 
 	// 着色器
 	auto project_path = std::filesystem::current_path().parent_path();
@@ -63,7 +61,6 @@ int main()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 	while (!glfwWindowShouldClose(window))
@@ -86,9 +83,6 @@ int main()
 		glfwSwapBuffers(window);
 		
 	}
-
-
-
 
 	glfwTerminate();
 	return 0;
