@@ -29,5 +29,5 @@ ENDIF ()
 
 
 AUX_SOURCE_DIRECTORY(${CMAKE_SOURCE_DIR}/src SRC_LIST)
-add_executable(gl_tool_kit ${SRC_LIST})
+add_executable(gl_tool_kit ${SRC_LIST} ./src/camera.h)
 

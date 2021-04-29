@@ -23,16 +23,8 @@ bool GladInit()
 	return true;
 }
 
-void FramebufferSizeCallback(GLFWwindow* window, int width, int height)
-{
-	glViewport(0, 0, width, height);
-}
 
-void GLProcessInput(GLFWwindow* window)
-{
-	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, true);
-}
+
 
 int CompileShaderTest(unsigned int shader_id)
 {
@@ -57,16 +49,48 @@ void GLInfo()
 	std::cout << "INFO:Maximum number of vertex attributes supported: " << nrAttributes << std::endl;
 }
 
-Shader::Shader(const char* vertexPath, const char* fragmentPath)
+unsigned int Load2DTexture(const char* filename)
+{
+	unsigned int texture;
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
+
+	// 为当前绑定的纹理对象设置环绕、过滤方式
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	
+
+	// 加载并生成纹理
+	int width, height, nrChannels;
+	unsigned char* data = stbi_load(filename, &width, &height, &nrChannels, 0);
+	if (data)
+	{
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else
+	{
+		std::cout << "Failed to load texture" << std::endl;
+	}
+	stbi_image_free(data);
+	return texture;
+}
+
+Shader::Shader(const char* vertexPath, const char* fragmentPath, const char* geometryPath = nullptr)
 {
 	// 1. retrieve the vertex/fragment source code from filePath
 	std::string vertexCode;
 	std::string fragmentCode;
+	std::string geometryCode;
 	std::ifstream vShaderFile;
 	std::ifstream fShaderFile;
+	std::ifstream gShaderFile;
 	// ensure ifstream objects can throw exceptions:
-	vShaderFile.exceptions (std::ifstream::failbit | std::ifstream::badbit);
-	fShaderFile.exceptions (std::ifstream::failbit | std::ifstream::badbit);
+	vShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+	fShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+	gShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 	try
 	{
 		// open files
@@ -80,15 +104,24 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath)
 		vShaderFile.close();
 		fShaderFile.close();
 		// convert stream into string
-		vertexCode   = vShaderStream.str();
+		vertexCode = vShaderStream.str();
 		fragmentCode = fShaderStream.str();
+		// if geometry shader path is present, also load a geometry shader
+		if (geometryPath != nullptr)
+		{
+			gShaderFile.open(geometryPath);
+			std::stringstream gShaderStream;
+			gShaderStream << gShaderFile.rdbuf();
+			gShaderFile.close();
+			geometryCode = gShaderStream.str();
+		}
 	}
 	catch (std::ifstream::failure& e)
 	{
 		std::cout << "ERROR::SHADER::FILE_NOT_SUCCESFULLY_READ" << std::endl;
 	}
 	const char* vShaderCode = vertexCode.c_str();
-	const char * fShaderCode = fragmentCode.c_str();
+	const char* fShaderCode = fragmentCode.c_str();
 	// 2. compile shaders
 	unsigned int vertex, fragment;
 	// vertex shader
@@ -101,15 +134,29 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath)
 	glShaderSource(fragment, 1, &fShaderCode, NULL);
 	glCompileShader(fragment);
 	checkCompileErrors(fragment, "FRAGMENT");
+	// if geometry shader is given, compile geometry shader
+	unsigned int geometry;
+	if (geometryPath != nullptr)
+	{
+		const char* gShaderCode = geometryCode.c_str();
+		geometry = glCreateShader(GL_GEOMETRY_SHADER);
+		glShaderSource(geometry, 1, &gShaderCode, NULL);
+		glCompileShader(geometry);
+		checkCompileErrors(geometry, "GEOMETRY");
+	}
 	// shader Program
 	ID = glCreateProgram();
 	glAttachShader(ID, vertex);
 	glAttachShader(ID, fragment);
+	if (geometryPath != nullptr)
+		glAttachShader(ID, geometry);
 	glLinkProgram(ID);
 	checkCompileErrors(ID, "PROGRAM");
-	// delete the shaders as they're linked into our program now and no longer necessary
+	// delete the shaders as they're linked into our program now and no longer necessery
 	glDeleteShader(vertex);
 	glDeleteShader(fragment);
+	if (geometryPath != nullptr)
+		glDeleteShader(geometry);
 }
 
 void Shader::Use()
@@ -119,8 +166,8 @@ void Shader::Use()
 
 void Shader::checkCompileErrors(unsigned int shader, std::string type)
 {
-	int success;
-	char infoLog[1024];
+	GLint success;
+	GLchar infoLog[1024];
 	if (type != "PROGRAM")
 	{
 		glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
