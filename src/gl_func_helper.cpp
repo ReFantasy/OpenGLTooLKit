@@ -78,7 +78,7 @@ unsigned int Load2DTexture(const char* filename)
 	return texture;
 }
 
-Shader::Shader(const char* vertexPath, const char* fragmentPath, const char* geometryPath = nullptr)
+GLSLProgram::GLSLProgram(const char* vertexPath, const char* fragmentPath, const char* geometryPath)
 {
 	// 1. retrieve the vertex/fragment source code from filePath
 	std::string vertexCode;
@@ -145,13 +145,13 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath, const char* geo
 		checkCompileErrors(geometry, "GEOMETRY");
 	}
 	// shader Program
-	ID = glCreateProgram();
-	glAttachShader(ID, vertex);
-	glAttachShader(ID, fragment);
+	prog_id = glCreateProgram();
+	glAttachShader(prog_id, vertex);
+	glAttachShader(prog_id, fragment);
 	if (geometryPath != nullptr)
-		glAttachShader(ID, geometry);
-	glLinkProgram(ID);
-	checkCompileErrors(ID, "PROGRAM");
+		glAttachShader(prog_id, geometry);
+	glLinkProgram(prog_id);
+	checkCompileErrors(prog_id, "PROGRAM");
 	// delete the shaders as they're linked into our program now and no longer necessery
 	glDeleteShader(vertex);
 	glDeleteShader(fragment);
@@ -159,12 +159,8 @@ Shader::Shader(const char* vertexPath, const char* fragmentPath, const char* geo
 		glDeleteShader(geometry);
 }
 
-void Shader::Use()
-{
-	glUseProgram(ID);
-}
 
-void Shader::checkCompileErrors(unsigned int shader, std::string type)
+void GLSLProgram::checkCompileErrors(unsigned int shader, std::string type)
 {
 	GLint success;
 	GLchar infoLog[1024];

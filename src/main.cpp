@@ -1,29 +1,17 @@
 ﻿#include <iostream>
 #include <filesystem>
+#include <memory>
 #include "gl_func_helper.h"
 using namespace std;
-
-
-
-// timing
-float deltaTime = 0.0f;	// time between current frame and last frame
-float lastFrame = 0.0f;
 
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-// camera
-Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
-float lastX = SCR_WIDTH / 2.0f;
-float lastY = SCR_HEIGHT / 2.0f;
-bool firstMouse = true;
 
+void ProcessInput(GLFWwindow* window, float deltaTime);
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void mouse_callback(GLFWwindow* window, double xpos, double ypos);
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
-void processInput(GLFWwindow* window);
+std::shared_ptr<Camera> Interactor::camera = std::make_shared<Camera>(glm::vec3(0.0f, 0.0f, 3.0f));
 
 int main()
 {
@@ -42,12 +30,9 @@ int main()
 	GLFWwindowTest(window);
 	glfwMakeContextCurrent(window);
 
-
-
-	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-	glfwSetCursorPosCallback(window, mouse_callback);
-	glfwSetScrollCallback(window, scroll_callback);
-
+	
+	
+	Interactor::Init(window);
 
 	// glad: load all OpenGL function pointers
 	if (!GladInit()) return -1;
@@ -57,8 +42,8 @@ int main()
 
 	// 着色器
 	auto project_path = std::filesystem::current_path().parent_path();
-	Shader shader(std::string(project_path.string() + "/src/vertShader.glsl").c_str(),
-		std::string(project_path.string() + "/src/fragShader.glsl").c_str(), nullptr);
+	GLSLProgram shader(std::string(project_path.string() + "/src/vertShader.glsl").c_str(),
+		std::string(project_path.string() + "/src/fragShader.glsl").c_str());
 
 
 	// 模型和数据
@@ -136,7 +121,7 @@ int main()
 	glEnableVertexAttribArray(1);
 
 	unsigned int wall_texture = Load2DTexture(std::string(project_path.string() + "/data/wall.jpg").c_str());
-	shader.Use();
+	shader.Enable();
 	shader.SetInt("texture0", 0);
 
 
@@ -146,34 +131,32 @@ int main()
 	while (!glfwWindowShouldClose(window))
 	{
 		// per-frame time logic
-		float currentFrame = glfwGetTime();
+		static float currentFrame, lastFrame, deltaTime;
+		currentFrame = (float)glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
 
 
 		// 输入
-		processInput(window);
+		ProcessInput(window, deltaTime);
 
 		// 渲染指令
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		//---------------------------------------------------------------------------------------------------------------------//
-		//---------------------------------------------------------------------------------------------------------------------//
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, wall_texture);
 
-		shader.Use();
+		shader.Enable();
 
 		// pass projection matrix to shader (note that in this case it could change every frame)
-		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+		glm::mat4 projection = glm::perspective(glm::radians(Interactor::camera->Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.001f, 100.0f);
 		shader.setMat4("projection", projection);
 
 		// camera/view transformation
-		glm::mat4 view = camera.GetViewMatrix();
+		glm::mat4 view = Interactor::camera->GetViewMatrix();
 		shader.setMat4("view", view);
-
-
 
 		// render boxes
 		glBindVertexArray(VAO);
@@ -188,8 +171,6 @@ int main()
 
 			glDrawArrays(GL_TRIANGLES, 0, 36);
 		}
-
-		//---------------------------------------------------------------------------------------------------------------------//
 		//---------------------------------------------------------------------------------------------------------------------//
 
 
@@ -203,55 +184,15 @@ int main()
 	return 0;
 }
 
-// process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
-void processInput(GLFWwindow* window)
+// process all input : query GLFW whether relevant keys are pressed / released this frame and react accordingly
+void ProcessInput(GLFWwindow * window, float deltaTime)
 {
-	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, true);
-
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-		camera.ProcessKeyboard(FORWARD, deltaTime);
+		Interactor::camera->ProcessKeyboard(FORWARD, deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-		camera.ProcessKeyboard(BACKWARD, deltaTime);
+		Interactor::camera->ProcessKeyboard(BACKWARD, deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-		camera.ProcessKeyboard(LEFT, deltaTime);
+		Interactor::camera->ProcessKeyboard(LEFT, deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-		camera.ProcessKeyboard(RIGHT, deltaTime);
-}
-
-// glfw: whenever the window size changed (by OS or user resize) this callback function executes
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
-{
-	// make sure the viewport matches the new window dimensions; note that width and 
-	// height will be significantly larger than specified on retina displays.
-	glViewport(0, 0, width, height);
-}
-
-
-// glfw: whenever the mouse moves, this callback is called
-void mouse_callback(GLFWwindow* window, double xpos, double ypos)
-{
-	if (firstMouse)
-	{
-		lastX = xpos;
-		lastY = ypos;
-		firstMouse = false;
-	}
-
-	float xoffset = xpos - lastX;
-	float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
-
-	lastX = xpos;
-	lastY = ypos;
-
-	if (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS)
-	{
-		camera.ProcessMouseMovement(xoffset, yoffset);
-	}
-}
-
-// glfw: whenever the mouse scroll wheel scrolls, this callback is called
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
-{
-	camera.ProcessMouseScroll(yoffset);
+		Interactor::camera->ProcessKeyboard(RIGHT, deltaTime);
 }
